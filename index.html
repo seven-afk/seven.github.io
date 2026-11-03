@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0f172a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>Calories</title>
 <style>
   :root {
@@ -94,7 +96,7 @@
   <button class="btn main" id="scan">📷 Scanner</button>
 </div></div>
 
-<dialog id="scanner">
+<dialog id="scanner" autofocus>
   <div id="reader"></div>
   <div class="row">
     <input id="code" inputmode="numeric" placeholder="Ou tape le code-barres" style="margin:0">
@@ -103,7 +105,7 @@
   <button class="link" id="scanclose">Fermer</button>
 </dialog>
 
-<dialog id="edit">
+<dialog id="edit" autofocus>
   <form method="dialog" id="form">
     <h3 id="etitle">Ajouter</h3>
     <label>Nom<input id="name" required></label>
@@ -122,7 +124,7 @@
   </form>
 </dialog>
 
-<dialog id="goals">
+<dialog id="goals" autofocus>
   <form method="dialog" id="gform">
     <h3>Mes objectifs du jour</h3>
     <div class="grid">
@@ -257,6 +259,7 @@ $('#gform').onsubmit = () => {
 };
 
 render();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 </script>
 </body>
 </html>
