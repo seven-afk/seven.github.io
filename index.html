@@ -58,7 +58,9 @@
   button.btn.main { background:var(--acc); color:#fff; flex:2; }
   .link { background:none; border:0; color:var(--mut); font:inherit; font-size:14px; width:100%; padding:8px; text-decoration:underline; }
 
-  dialog { width:min(92vw,480px); border:0; border-radius:22px; background:var(--card); color:var(--fg); padding:20px; }
+  /* en haut de l'écran pour ne pas passer sous le clavier */
+  dialog { width:min(92vw,480px); border:0; border-radius:22px; background:var(--card); color:var(--fg); padding:20px;
+    margin:calc(env(safe-area-inset-top) + 10px) auto auto; max-height:calc(100dvh - 20px); overflow:auto; }
   dialog::backdrop { background:#0009; }
   dialog h3 { margin:0 0 12px; }
   label { display:block; font-size:12px; color:var(--mut); margin-bottom:4px; }
@@ -92,6 +94,7 @@
 <div class="card"><h2>Repas du jour</h2><div id="list"></div></div>
 
 <div class="actions"><div class="in">
+  <button class="btn" id="recent">★ Récents</button>
   <button class="btn" id="manual">＋ Manuel</button>
   <button class="btn main" id="scan">📷 Scanner</button>
 </div></div>
@@ -101,17 +104,23 @@
   <button class="btn" id="scanclose" style="width:100%;margin-top:12px">Fermer</button>
 </dialog>
 
+<dialog id="recents" autofocus>
+  <h3>Récents</h3><div id="rec"></div>
+  <h3 style="margin-top:16px">Fréquents</h3><div id="freq"></div>
+  <button class="btn" id="rclose" style="width:100%;margin-top:12px">Fermer</button>
+</dialog>
+
 <dialog id="edit" autofocus>
   <form method="dialog" id="form">
     <h3 id="etitle">Ajouter</h3>
     <label>Nom<input id="name" required></label>
     <div class="grid">
-      <label>kcal /100g<input id="e_kcal" type="number" step="any" min="0" required></label>
-      <label>Protéines /100g<input id="e_p" type="number" step="any" min="0" required></label>
-      <label>Glucides /100g<input id="e_c" type="number" step="any" min="0" required></label>
-      <label>Lipides /100g<input id="e_f" type="number" step="any" min="0" required></label>
+      <label>kcal /100g<input id="e_kcal" class="num" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" required></label>
+      <label>Protéines /100g<input id="e_p" class="num" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" required></label>
+      <label>Glucides /100g<input id="e_c" class="num" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" required></label>
+      <label>Lipides /100g<input id="e_f" class="num" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" required></label>
     </div>
-    <label>Quantité mangée (g)<input id="g" type="number" step="any" min="1" value="100" required></label>
+    <label>Quantité mangée (g)<input id="g" class="num" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" value="100" required></label>
     <p class="note" id="note"></p>
     <div class="row">
       <button type="button" class="btn" id="cancel">Annuler</button>
@@ -124,10 +133,10 @@
   <form method="dialog" id="gform">
     <h3>Mes objectifs du jour</h3>
     <div class="grid">
-      <label>Protéines (g)<input id="g_p" type="number" min="0" required></label>
-      <label>Glucides (g)<input id="g_c" type="number" min="0" required></label>
-      <label>Lipides (g)<input id="g_f" type="number" min="0" required></label>
-      <label>Calories (kcal)<input id="g_k" type="number" min="1" required></label>
+      <label>Protéines (g)<input id="g_p" class="num" inputmode="numeric" pattern="[0-9]*" required></label>
+      <label>Glucides (g)<input id="g_c" class="num" inputmode="numeric" pattern="[0-9]*" required></label>
+      <label>Lipides (g)<input id="g_f" class="num" inputmode="numeric" pattern="[0-9]*" required></label>
+      <label>Calories (kcal)<input id="g_k" class="num" inputmode="numeric" pattern="[0-9]*" required></label>
     </div>
     <p class="note" id="gnote"></p>
     <div class="row">
@@ -142,7 +151,8 @@
 const $ = s => document.querySelector(s);
 const KEY = 'calories-v1';
 // over: corrections par code-barres (par 100g), log: { 'YYYY-MM-DD': [entrées] }, goals: objectifs en g
-let S = { goal: 2000, goals: { p: 150, c: 220, f: 65 }, over: {}, log: {} };
+// foods: aliments déjà ajoutés (par nom) pour Récents/Fréquents
+let S = { goal: 2000, goals: { p: 150, c: 220, f: 65 }, over: {}, log: {}, foods: {} };
 try { S = { ...S, ...JSON.parse(localStorage.getItem(KEY)) }; } catch {}
 const save = () => localStorage.setItem(KEY, JSON.stringify(S));
 const today = () => new Date().toLocaleDateString('sv');
@@ -182,7 +192,7 @@ function openEdit(code, p, note) {
   $('#e_p').value = p.p ?? '';
   $('#e_c').value = p.c ?? '';
   $('#e_f').value = p.f ?? '';
-  $('#g').value = 100;
+  $('#g').value = p.g || 100;
   $('#note').textContent = note || '';
   $('#edit').showModal();
 }
@@ -230,13 +240,35 @@ $('#list').onclick = e => {
   if (n != null) { S.log[day].splice(n, 1); save(); render(); }
 };
 $('#form').onsubmit = () => {
-  const v = id => parseFloat($(id).value) || 0;
+  const v = id => parseFloat($(id).value.replace(',', '.')) || 0;
   const per = { name: $('#name').value.trim(), kcal: v('#e_kcal'), p: v('#e_p'), c: v('#e_c'), f: v('#e_f') };
   const g = v('#g');
   if (curCode) S.over[curCode] = per;
+  const key = per.name.toLowerCase();
+  S.foods[key] = { ...per, code: curCode, g, n: (S.foods[key]?.n || 0) + 1, last: Date.now() };
   (S.log[day] ||= []).push({ name: per.name, g, kcal: r(per.kcal * g / 100), p: r(per.p * g / 100), c: r(per.c * g / 100), f: r(per.f * g / 100) });
   save(); render();
 };
+
+const foodRows = list => list.length ? list.map(([k, f]) =>
+  `<div class="item" data-food="${esc(k)}"><div class="info"><div class="nm">${esc(f.name)}</div><small>${f.g} g habituels · ${Math.round(f.kcal)} kcal/100g</small></div></div>`
+).join('') : '<div class="empty">Rien pour l\'instant.</div>';
+$('#recent').onclick = () => {
+  const all = Object.entries(S.foods);
+  $('#rec').innerHTML = foodRows([...all].sort((a, b) => b[1].last - a[1].last).slice(0, 8));
+  $('#freq').innerHTML = foodRows([...all].sort((a, b) => b[1].n - a[1].n).slice(0, 8));
+  $('#recents').showModal();
+};
+$('#rclose').onclick = () => $('#recents').close();
+$('#recents').onclick = e => {
+  const row = e.target.closest('[data-food]');
+  if (!row) return;
+  const f = S.foods[row.dataset.food];
+  $('#recents').close();
+  openEdit(f.code, f, 'Ajuste la quantité puis ajoute.');
+};
+// sélectionne tout le contenu au toucher : on retape directement le chiffre
+document.addEventListener('focusin', e => e.target.classList.contains('num') && e.target.select());
 
 // objectifs : les 3 macros donnent des kcal (4/4/9), affichées en indication sous le formulaire
 const macroKcal = () => (+$('#g_p').value + +$('#g_c').value) * 4 + +$('#g_f').value * 9;
