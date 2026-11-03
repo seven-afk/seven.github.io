@@ -2,70 +2,110 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#16a34a">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
 <title>Calories</title>
 <style>
-  :root { --bg:#f6f7f6; --card:#fff; --fg:#111; --mut:#6b7280; --acc:#16a34a; --bd:#e5e7eb; }
-  @media (prefers-color-scheme: dark) { :root { --bg:#111513; --card:#1b201d; --fg:#f3f4f6; --mut:#9ca3af; --bd:#2b322e; } }
-  * { box-sizing:border-box; }
-  body { margin:0; font:16px system-ui,sans-serif; background:var(--bg); color:var(--fg); padding:16px; max-width:520px; margin-inline:auto; }
-  .card { background:var(--card); border:1px solid var(--bd); border-radius:14px; padding:14px; margin-bottom:12px; }
-  .row { display:flex; gap:8px; align-items:center; }
-  .row > * { flex:1; }
-  button { font:inherit; padding:12px; border-radius:10px; border:1px solid var(--bd); background:var(--card); color:var(--fg); }
-  button.main { background:var(--acc); color:#fff; border:0; font-weight:600; }
-  button.x { flex:none; padding:6px 10px; color:var(--mut); }
-  input { font:inherit; width:100%; padding:10px; border-radius:8px; border:1px solid var(--bd); background:var(--bg); color:var(--fg); }
-  label { display:block; font-size:13px; color:var(--mut); }
-  h1 { font-size:18px; margin:0; text-align:center; flex:3; }
-  .big { font-size:34px; font-weight:700; }
-  .bar { height:8px; background:var(--bd); border-radius:4px; overflow:hidden; margin:8px 0; }
-  .bar i { display:block; height:100%; background:var(--acc); }
-  .bar i.over { background:#dc2626; }
-  .mac { display:flex; justify-content:space-between; color:var(--mut); font-size:14px; }
-  .item { display:flex; align-items:center; gap:8px; padding:8px 0; border-top:1px solid var(--bd); }
-  .item div { flex:1; min-width:0; }
-  .item small { color:var(--mut); display:block; }
-  dialog { width:min(92vw,480px); border:0; border-radius:14px; background:var(--card); color:var(--fg); padding:16px; }
-  dialog::backdrop { background:#0008; }
-  .grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:8px 0; }
-  #reader { width:100%; }
+  :root {
+    --bg:#f1f5f9; --card:#fff; --fg:#0f172a; --mut:#64748b; --bd:#e2e8f0; --track:#e2e8f0;
+    --acc:#16a34a; --p:#3b82f6; --c:#f59e0b; --f:#ec4899; --over:#ef4444;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#0b1020; --card:#151b2e; --fg:#f1f5f9; --mut:#94a3b8; --bd:#252d45; --track:#252d45; }
+  }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; font:16px/1.4 system-ui,-apple-system,sans-serif; background:var(--bg); color:var(--fg); padding:0 16px 110px; max-width:520px; margin-inline:auto; }
+
+  header { display:flex; align-items:center; justify-content:space-between; padding:18px 0 12px; }
+  header h1 { font-size:18px; margin:0; text-transform:capitalize; }
+  .nav { width:40px; height:40px; border-radius:50%; border:0; background:var(--card); color:var(--fg); font-size:20px; box-shadow:0 1px 3px #0001; }
+
+  .card { background:var(--card); border-radius:20px; padding:18px; margin-bottom:14px; box-shadow:0 1px 3px #0001; }
+
+  .ring-wrap { display:flex; align-items:center; gap:18px; }
+  .ring { --pct:0; --col:var(--acc); width:128px; height:128px; flex:none; border-radius:50%;
+    background:conic-gradient(var(--col) calc(var(--pct)*1%), var(--track) 0);
+    display:grid; place-items:center; }
+  .ring::before { content:""; grid-area:1/1; width:100px; height:100px; border-radius:50%; background:var(--card); }
+  .ring > div { grid-area:1/1; text-align:center; z-index:1; }
+  .ring b { font-size:26px; display:block; line-height:1; }
+  .ring span { font-size:12px; color:var(--mut); }
+  .side { flex:1; font-size:14px; color:var(--mut); }
+  .side b { color:var(--fg); font-size:20px; display:block; }
+
+  .macros { display:grid; gap:12px; }
+  .m { font-size:14px; }
+  .m .top { display:flex; justify-content:space-between; margin-bottom:4px; }
+  .m .top span:last-child { color:var(--mut); }
+  .bar { height:8px; border-radius:4px; background:var(--track); overflow:hidden; }
+  .bar i { display:block; height:100%; border-radius:4px; }
+
+  h2 { font-size:15px; margin:0 0 6px; }
+  .item { display:flex; align-items:center; gap:10px; padding:10px 0; border-top:1px solid var(--bd); }
+  .item:first-of-type { border-top:0; }
+  .item .info { flex:1; min-width:0; }
+  .item .nm { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .item small { color:var(--mut); font-size:12px; }
+  .item .k { font-weight:600; }
+  .del { border:0; background:none; color:var(--mut); font-size:18px; padding:4px 8px; }
+  .empty { color:var(--mut); text-align:center; padding:18px 0 6px; }
+
+  .actions { position:fixed; left:0; right:0; bottom:0; padding:12px 16px calc(12px + env(safe-area-inset-bottom)); background:linear-gradient(transparent, var(--bg) 35%); }
+  .actions .in { max-width:520px; margin:auto; display:flex; gap:10px; }
+  button.btn { font:inherit; font-weight:600; border:0; border-radius:16px; padding:15px; flex:1; background:var(--card); color:var(--fg); box-shadow:0 2px 8px #0002; }
+  button.btn.main { background:var(--acc); color:#fff; flex:2; }
+  .link { background:none; border:0; color:var(--mut); font:inherit; font-size:14px; width:100%; padding:8px; text-decoration:underline; }
+
+  dialog { width:min(92vw,480px); border:0; border-radius:22px; background:var(--card); color:var(--fg); padding:20px; }
+  dialog::backdrop { background:#0009; }
+  dialog h3 { margin:0 0 12px; }
+  label { display:block; font-size:12px; color:var(--mut); margin-bottom:4px; }
+  input { font:inherit; width:100%; padding:11px; border-radius:12px; border:1px solid var(--bd); background:var(--bg); color:var(--fg); margin-top:3px; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:10px 0; }
+  .row { display:flex; gap:10px; margin-top:12px; }
+  .note { font-size:13px; color:var(--mut); margin:8px 0 0; }
+  #reader { width:100%; border-radius:14px; overflow:hidden; }
 </style>
 </head>
 <body>
 
-<div class="row" style="margin-bottom:12px">
-  <button class="x" id="prev">‹</button>
+<header>
+  <button class="nav" id="prev">‹</button>
   <h1 id="title"></h1>
-  <button class="x" id="next">›</button>
+  <button class="nav" id="next">›</button>
+</header>
+
+<div class="card ring-wrap">
+  <div class="ring" id="ring"><div><b id="kcal">0</b><span>kcal</span></div></div>
+  <div class="side"><b id="left"></b><span id="leftlbl"></span><br>Objectif <span id="goal"></span> kcal</div>
 </div>
 
-<div class="card">
-  <div class="big"><span id="kcal">0</span> <small style="font-size:14px;font-weight:400;color:var(--mut)">/ <span id="goal"></span> kcal</small></div>
-  <div class="bar"><i id="fill"></i></div>
-  <div class="mac"><span id="p"></span><span id="c"></span><span id="f"></span></div>
+<div class="card macros">
+  <div class="m"><div class="top"><span>Protéines</span><span id="tp"></span></div><div class="bar"><i id="bp" style="background:var(--p)"></i></div></div>
+  <div class="m"><div class="top"><span>Glucides</span><span id="tc"></span></div><div class="bar"><i id="bc" style="background:var(--c)"></i></div></div>
+  <div class="m"><div class="top"><span>Lipides</span><span id="tf"></span></div><div class="bar"><i id="bf" style="background:var(--f)"></i></div></div>
+  <button class="link" id="setgoal">Modifier mes objectifs</button>
 </div>
 
-<div class="row" style="margin-bottom:12px">
-  <button class="main" id="scan">📷 Scanner</button>
-  <button id="manual">＋ Manuel</button>
-</div>
+<div class="card"><h2>Repas du jour</h2><div id="list"></div></div>
 
-<div class="card" id="list"></div>
-<button id="setgoal" style="width:100%">Objectif quotidien</button>
+<div class="actions"><div class="in">
+  <button class="btn" id="manual">＋ Manuel</button>
+  <button class="btn main" id="scan">📷 Scanner</button>
+</div></div>
 
 <dialog id="scanner">
   <div id="reader"></div>
-  <div class="row" style="margin-top:8px">
-    <input id="code" inputmode="numeric" placeholder="Ou tape le code-barres">
-    <button id="codeok" style="flex:none">OK</button>
+  <div class="row">
+    <input id="code" inputmode="numeric" placeholder="Ou tape le code-barres" style="margin:0">
+    <button class="btn" id="codeok" style="flex:none;padding:11px 18px">OK</button>
   </div>
-  <button id="scanclose" style="width:100%;margin-top:8px">Fermer</button>
+  <button class="link" id="scanclose">Fermer</button>
 </dialog>
 
 <dialog id="edit">
   <form method="dialog" id="form">
+    <h3 id="etitle">Ajouter</h3>
     <label>Nom<input id="name" required></label>
     <div class="grid">
       <label>kcal /100g<input id="e_kcal" type="number" step="any" min="0" required></label>
@@ -74,10 +114,27 @@
       <label>Lipides /100g<input id="e_f" type="number" step="any" min="0" required></label>
     </div>
     <label>Quantité mangée (g)<input id="g" type="number" step="any" min="1" value="100" required></label>
-    <p id="note" style="font-size:13px;color:var(--mut)"></p>
+    <p class="note" id="note"></p>
     <div class="row">
-      <button type="button" id="cancel">Annuler</button>
-      <button class="main" id="ok">Ajouter</button>
+      <button type="button" class="btn" id="cancel">Annuler</button>
+      <button class="btn main">Ajouter</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="goals">
+  <form method="dialog" id="gform">
+    <h3>Mes objectifs du jour</h3>
+    <div class="grid">
+      <label>Protéines (g)<input id="g_p" type="number" min="0" required></label>
+      <label>Glucides (g)<input id="g_c" type="number" min="0" required></label>
+      <label>Lipides (g)<input id="g_f" type="number" min="0" required></label>
+      <label>Calories (kcal)<input id="g_k" type="number" min="1" required></label>
+    </div>
+    <p class="note" id="gnote"></p>
+    <div class="row">
+      <button type="button" class="btn" id="gcancel">Annuler</button>
+      <button class="btn main">Enregistrer</button>
     </div>
   </form>
 </dialog>
@@ -86,8 +143,8 @@
 <script>
 const $ = s => document.querySelector(s);
 const KEY = 'calories-v1';
-// over: corrections par code-barres (par 100g), log: { 'YYYY-MM-DD': [entrées] }
-let S = { goal: 2000, over: {}, log: {} };
+// over: corrections par code-barres (par 100g), log: { 'YYYY-MM-DD': [entrées] }, goals: objectifs en g
+let S = { goal: 2000, goals: { p: 150, c: 220, f: 65 }, over: {}, log: {} };
 try { S = { ...S, ...JSON.parse(localStorage.getItem(KEY)) }; } catch {}
 const save = () => localStorage.setItem(KEY, JSON.stringify(S));
 const today = () => new Date().toLocaleDateString('sv');
@@ -101,14 +158,18 @@ function render() {
   $('#title').textContent = day === today() ? "Aujourd'hui" : new Date(day + 'T12:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
   $('#kcal').textContent = Math.round(t.kcal);
   $('#goal').textContent = S.goal;
-  $('#fill').style.width = Math.min(100, t.kcal / S.goal * 100) + '%';
-  $('#fill').className = t.kcal > S.goal ? 'over' : '';
-  $('#p').textContent = `P ${Math.round(t.p)}g`;
-  $('#c').textContent = `G ${Math.round(t.c)}g`;
-  $('#f').textContent = `L ${Math.round(t.f)}g`;
+  const left = Math.round(S.goal - t.kcal);
+  $('#left').textContent = Math.abs(left);
+  $('#leftlbl').textContent = left >= 0 ? ' kcal restantes' : ' kcal en trop';
+  $('#ring').style.setProperty('--pct', Math.min(100, t.kcal / S.goal * 100));
+  $('#ring').style.setProperty('--col', left < 0 ? 'var(--over)' : 'var(--acc)');
+  for (const k of ['p', 'c', 'f']) {
+    $('#t' + k).textContent = `${Math.round(t[k])} / ${S.goals[k]} g`;
+    $('#b' + k).style.width = Math.min(100, t[k] / S.goals[k] * 100) + '%';
+  }
   $('#list').innerHTML = items.length ? items.map((i, n) =>
-    `<div class="item"><div>${esc(i.name)}<small>${i.g}g · ${Math.round(i.kcal)} kcal · P${Math.round(i.p)} G${Math.round(i.c)} L${Math.round(i.f)}</small></div><button class="x" data-del="${n}">✕</button></div>`
-  ).join('') : '<span style="color:var(--mut)">Rien de saisi pour ce jour.</span>';
+    `<div class="item"><div class="info"><div class="nm">${esc(i.name)}</div><small>${i.g} g · P${Math.round(i.p)} G${Math.round(i.c)} L${Math.round(i.f)}</small></div><span class="k">${Math.round(i.kcal)}</span><button class="del" data-del="${n}">✕</button></div>`
+  ).join('') : '<div class="empty">Rien de saisi pour ce jour.</div>';
 }
 
 function shift(d) {
@@ -117,6 +178,7 @@ function shift(d) {
 
 function openEdit(code, p, note) {
   curCode = code;
+  $('#etitle').textContent = p.name ? 'Vérifier le produit' : 'Ajouter un aliment';
   $('#name').value = p.name || '';
   $('#e_kcal').value = p.kcal ?? '';
   $('#e_p').value = p.p ?? '';
@@ -166,10 +228,6 @@ $('#manual').onclick = () => openEdit('', {}, '');
 $('#cancel').onclick = () => $('#edit').close();
 $('#prev').onclick = () => shift(-1);
 $('#next').onclick = () => shift(1);
-$('#setgoal').onclick = () => {
-  const v = parseFloat(prompt('Objectif kcal par jour', S.goal));
-  if (v > 0) { S.goal = v; save(); render(); }
-};
 $('#list').onclick = e => {
   const n = e.target.dataset.del;
   if (n != null) { S.log[day].splice(n, 1); save(); render(); }
@@ -180,6 +238,21 @@ $('#form').onsubmit = () => {
   const g = v('#g');
   if (curCode) S.over[curCode] = per;
   (S.log[day] ||= []).push({ name: per.name, g, kcal: r(per.kcal * g / 100), p: r(per.p * g / 100), c: r(per.c * g / 100), f: r(per.f * g / 100) });
+  save(); render();
+};
+
+// objectifs : les 3 macros donnent des kcal (4/4/9), affichées en indication sous le formulaire
+const macroKcal = () => (+$('#g_p').value + +$('#g_c').value) * 4 + +$('#g_f').value * 9;
+const hint = () => $('#gnote').textContent = `Tes macros font ${Math.round(macroKcal())} kcal.`;
+$('#setgoal').onclick = () => {
+  $('#g_p').value = S.goals.p; $('#g_c').value = S.goals.c; $('#g_f').value = S.goals.f; $('#g_k').value = S.goal;
+  hint(); $('#goals').showModal();
+};
+['#g_p', '#g_c', '#g_f'].forEach(id => $(id).oninput = hint);
+$('#gcancel').onclick = () => $('#goals').close();
+$('#gform').onsubmit = () => {
+  S.goals = { p: +$('#g_p').value, c: +$('#g_c').value, f: +$('#g_f').value };
+  S.goal = +$('#g_k').value;
   save(); render();
 };
 
