@@ -98,11 +98,7 @@
 
 <dialog id="scanner" autofocus>
   <div id="reader"></div>
-  <div class="row">
-    <input id="code" inputmode="numeric" placeholder="Ou tape le code-barres" style="margin:0">
-    <button class="btn" id="codeok" style="flex:none;padding:11px 18px">OK</button>
-  </div>
-  <button class="link" id="scanclose">Fermer</button>
+  <button class="btn" id="scanclose" style="width:100%;margin-top:12px">Fermer</button>
 </dialog>
 
 <dialog id="edit" autofocus>
@@ -222,10 +218,9 @@ $('#scan').onclick = async () => {
     await scanner.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 260, height: 160 } }, async txt => {
       await stopScan(); lookup(txt);
     });
-  } catch { $('#reader').textContent = 'Caméra indisponible (HTTPS + autorisation requis) : tape le code ci-dessous.'; scanner = null; }
+  } catch { $('#reader').textContent = 'Caméra indisponible : autorise l\'accès à la caméra dans les réglages du site.'; scanner = null; }
 };
 $('#scanclose').onclick = stopScan;
-$('#codeok').onclick = async () => { const c = $('#code').value; $('#code').value = ''; await stopScan(); lookup(c); };
 $('#manual').onclick = () => openEdit('', {}, '');
 $('#cancel').onclick = () => $('#edit').close();
 $('#prev').onclick = () => shift(-1);
