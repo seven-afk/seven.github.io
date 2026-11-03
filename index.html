@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#16a34a">
+<title>Calories</title>
+<style>
+  :root { --bg:#f6f7f6; --card:#fff; --fg:#111; --mut:#6b7280; --acc:#16a34a; --bd:#e5e7eb; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#111513; --card:#1b201d; --fg:#f3f4f6; --mut:#9ca3af; --bd:#2b322e; } }
+  * { box-sizing:border-box; }
+  body { margin:0; font:16px system-ui,sans-serif; background:var(--bg); color:var(--fg); padding:16px; max-width:520px; margin-inline:auto; }
+  .card { background:var(--card); border:1px solid var(--bd); border-radius:14px; padding:14px; margin-bottom:12px; }
+  .row { display:flex; gap:8px; align-items:center; }
+  .row > * { flex:1; }
+  button { font:inherit; padding:12px; border-radius:10px; border:1px solid var(--bd); background:var(--card); color:var(--fg); }
+  button.main { background:var(--acc); color:#fff; border:0; font-weight:600; }
+  button.x { flex:none; padding:6px 10px; color:var(--mut); }
+  input { font:inherit; width:100%; padding:10px; border-radius:8px; border:1px solid var(--bd); background:var(--bg); color:var(--fg); }
+  label { display:block; font-size:13px; color:var(--mut); }
+  h1 { font-size:18px; margin:0; text-align:center; flex:3; }
+  .big { font-size:34px; font-weight:700; }
+  .bar { height:8px; background:var(--bd); border-radius:4px; overflow:hidden; margin:8px 0; }
+  .bar i { display:block; height:100%; background:var(--acc); }
+  .bar i.over { background:#dc2626; }
+  .mac { display:flex; justify-content:space-between; color:var(--mut); font-size:14px; }
+  .item { display:flex; align-items:center; gap:8px; padding:8px 0; border-top:1px solid var(--bd); }
+  .item div { flex:1; min-width:0; }
+  .item small { color:var(--mut); display:block; }
+  dialog { width:min(92vw,480px); border:0; border-radius:14px; background:var(--card); color:var(--fg); padding:16px; }
+  dialog::backdrop { background:#0008; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:8px 0; }
+  #reader { width:100%; }
+</style>
+</head>
+<body>
+
+<div class="row" style="margin-bottom:12px">
+  <button class="x" id="prev">‹</button>
+  <h1 id="title"></h1>
+  <button class="x" id="next">›</button>
+</div>
+
+<div class="card">
+  <div class="big"><span id="kcal">0</span> <small style="font-size:14px;font-weight:400;color:var(--mut)">/ <span id="goal"></span> kcal</small></div>
+  <div class="bar"><i id="fill"></i></div>
+  <div class="mac"><span id="p"></span><span id="c"></span><span id="f"></span></div>
+</div>
+
+<div class="row" style="margin-bottom:12px">
+  <button class="main" id="scan">📷 Scanner</button>
+  <button id="manual">＋ Manuel</button>
+</div>
+
+<div class="card" id="list"></div>
+<button id="setgoal" style="width:100%">Objectif quotidien</button>
+
+<dialog id="scanner">
+  <div id="reader"></div>
+  <div class="row" style="margin-top:8px">
+    <input id="code" inputmode="numeric" placeholder="Ou tape le code-barres">
+    <button id="codeok" style="flex:none">OK</button>
+  </div>
+  <button id="scanclose" style="width:100%;margin-top:8px">Fermer</button>
+</dialog>
+
+<dialog id="edit">
+  <form method="dialog" id="form">
+    <label>Nom<input id="name" required></label>
+    <div class="grid">
+      <label>kcal /100g<input id="e_kcal" type="number" step="any" min="0" required></label>
+      <label>Protéines /100g<input id="e_p" type="number" step="any" min="0" required></label>
+      <label>Glucides /100g<input id="e_c" type="number" step="any" min="0" required></label>
+      <label>Lipides /100g<input id="e_f" type="number" step="any" min="0" required></label>
+    </div>
+    <label>Quantité mangée (g)<input id="g" type="number" step="any" min="1" value="100" required></label>
+    <p id="note" style="font-size:13px;color:var(--mut)"></p>
+    <div class="row">
+      <button type="button" id="cancel">Annuler</button>
+      <button class="main" id="ok">Ajouter</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const KEY = 'calories-v1';
+// over: corrections par code-barres (par 100g), log: { 'YYYY-MM-DD': [entrées] }
+let S = { goal: 2000, over: {}, log: {} };
+try { S = { ...S, ...JSON.parse(localStorage.getItem(KEY)) }; } catch {}
+const save = () => localStorage.setItem(KEY, JSON.stringify(S));
+const today = () => new Date().toLocaleDateString('sv');
+let day = today(), curCode = '', scanner = null;
+const r = n => Math.round(n * 10) / 10;
+const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function render() {
+  const items = S.log[day] || [];
+  const t = items.reduce((a, i) => ({ kcal: a.kcal + i.kcal, p: a.p + i.p, c: a.c + i.c, f: a.f + i.f }), { kcal: 0, p: 0, c: 0, f: 0 });
+  $('#title').textContent = day === today() ? "Aujourd'hui" : new Date(day + 'T12:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  $('#kcal').textContent = Math.round(t.kcal);
+  $('#goal').textContent = S.goal;
+  $('#fill').style.width = Math.min(100, t.kcal / S.goal * 100) + '%';
+  $('#fill').className = t.kcal > S.goal ? 'over' : '';
+  $('#p').textContent = `P ${Math.round(t.p)}g`;
+  $('#c').textContent = `G ${Math.round(t.c)}g`;
+  $('#f').textContent = `L ${Math.round(t.f)}g`;
+  $('#list').innerHTML = items.length ? items.map((i, n) =>
+    `<div class="item"><div>${esc(i.name)}<small>${i.g}g · ${Math.round(i.kcal)} kcal · P${Math.round(i.p)} G${Math.round(i.c)} L${Math.round(i.f)}</small></div><button class="x" data-del="${n}">✕</button></div>`
+  ).join('') : '<span style="color:var(--mut)">Rien de saisi pour ce jour.</span>';
+}
+
+function shift(d) {
+  const x = new Date(day + 'T12:00'); x.setDate(x.getDate() + d); day = x.toLocaleDateString('sv'); render();
+}
+
+function openEdit(code, p, note) {
+  curCode = code;
+  $('#name').value = p.name || '';
+  $('#e_kcal').value = p.kcal ?? '';
+  $('#e_p').value = p.p ?? '';
+  $('#e_c').value = p.c ?? '';
+  $('#e_f').value = p.f ?? '';
+  $('#g').value = 100;
+  $('#note').textContent = note || '';
+  $('#edit').showModal();
+}
+
+async function lookup(code) {
+  code = code.trim();
+  if (!code) return;
+  if (S.over[code]) return openEdit(code, S.over[code], 'Valeurs corrigées par toi (mémorisées).');
+  try {
+    const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?fields=product_name,nutriments`);
+    const j = await res.json();
+    if (j.status !== 1) throw 0;
+    const n = j.product.nutriments || {};
+    openEdit(code, {
+      name: j.product.product_name || '',
+      kcal: n['energy-kcal_100g'] != null ? r(n['energy-kcal_100g']) : (n.energy_100g != null ? r(n.energy_100g / 4.184) : ''),
+      p: r(n.proteins_100g ?? 0), c: r(n.carbohydrates_100g ?? 0), f: r(n.fat_100g ?? 0),
+    }, 'Source : Open Food Facts. Si c\'est faux, corrige : la correction sera mémorisée.');
+  } catch {
+    openEdit(code, {}, 'Produit introuvable ou hors-ligne : remplis les valeurs, elles seront mémorisées pour ce code.');
+  }
+}
+
+async function stopScan() {
+  if (scanner) { try { await scanner.stop(); } catch {} scanner = null; }
+  $('#scanner').close();
+}
+
+$('#scan').onclick = async () => {
+  $('#scanner').showModal();
+  scanner = new Html5Qrcode('reader');
+  try {
+    await scanner.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 260, height: 160 } }, async txt => {
+      await stopScan(); lookup(txt);
+    });
+  } catch { $('#reader').textContent = 'Caméra indisponible (HTTPS + autorisation requis) : tape le code ci-dessous.'; scanner = null; }
+};
+$('#scanclose').onclick = stopScan;
+$('#codeok').onclick = async () => { const c = $('#code').value; $('#code').value = ''; await stopScan(); lookup(c); };
+$('#manual').onclick = () => openEdit('', {}, '');
+$('#cancel').onclick = () => $('#edit').close();
+$('#prev').onclick = () => shift(-1);
+$('#next').onclick = () => shift(1);
+$('#setgoal').onclick = () => {
+  const v = parseFloat(prompt('Objectif kcal par jour', S.goal));
+  if (v > 0) { S.goal = v; save(); render(); }
+};
+$('#list').onclick = e => {
+  const n = e.target.dataset.del;
+  if (n != null) { S.log[day].splice(n, 1); save(); render(); }
+};
+$('#form').onsubmit = () => {
+  const v = id => parseFloat($(id).value) || 0;
+  const per = { name: $('#name').value.trim(), kcal: v('#e_kcal'), p: v('#e_p'), c: v('#e_c'), f: v('#e_f') };
+  const g = v('#g');
+  if (curCode) S.over[curCode] = per;
+  (S.log[day] ||= []).push({ name: per.name, g, kcal: r(per.kcal * g / 100), p: r(per.p * g / 100), c: r(per.c * g / 100), f: r(per.f * g / 100) });
+  save(); render();
+};
+
+render();
+</script>
+</body>
+</html>
